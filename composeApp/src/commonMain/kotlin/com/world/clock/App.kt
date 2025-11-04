@@ -13,6 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.world.clock.navigation.Screen
+import com.world.clock.screens.AllTimeZonesScreen
+import com.world.clock.screens.WorldClockScreen
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -23,27 +26,24 @@ import worldclockkmp.composeapp.generated.resources.compose_multiplatform
 @Preview
 fun App() {
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
+        val timeZones = listOf("Asia/Karachi", "Europe/London", "America/New_York")
+        val favouriteTimeZones = listOf("Asia/Karachi")
+        var currentScreen by remember { mutableStateOf<Screen>(Screen.WorldClock(favouriteTimeZones)) }
+        when (val screen = currentScreen) {
+            is Screen.WorldClock -> {
+                WorldClockScreen(timezones = favouriteTimeZones, onAddClick = {
+                    currentScreen = Screen.AllTimeZones
+                })
+
             }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
+            is Screen.AllTimeZones -> {
+                AllTimeZonesScreen(timeZones, onBackClick = {
+                    currentScreen = Screen.WorldClock(favouriteTimeZones)
+                })
+
             }
+
+
         }
     }
 }
