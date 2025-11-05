@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -15,7 +17,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -25,15 +27,16 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     jvm()
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -42,10 +45,22 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            //data time
+            implementation(libs.kotlinx.datetime)
+            //ssp sdp
+            implementation(libs.sdp.ssp.compose.multiplatform)
+            //Voyager navigation and transition
+            implementation(libs.voyager.navigator)
+            implementation(libs.voyager.transition)
+            implementation(libs.voyager.tab.navigator)
 
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
-
-
+            //room
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+            // DataStore library
+            implementation("androidx.datastore:datastore:1.1.7")
+            // The Preferences DataStore library
+            implementation("androidx.datastore:datastore-preferences:1.1.7")
 
         }
         commonTest.dependencies {
@@ -89,6 +104,8 @@ dependencies {
     debugImplementation(compose.uiTooling)
 }
 
+
+
 compose.desktop {
     application {
         mainClass = "com.world.clock.MainKt"
@@ -100,3 +117,19 @@ compose.desktop {
         }
     }
 }
+dependencies {
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.activity)
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+//    add("kspIosX64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    // Add any other platform target you use in your project, for example kspDesktop
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+
