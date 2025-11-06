@@ -39,5 +39,12 @@ class FavouriteTimeZonesViewModel(private val dao: FavouriteTimeZoneDao) : ViewM
         }
     }
 
+    fun updateTimeZone(id:String, newName: String){
+        viewModelScope.launch {
+            dao.updateName(id, newName)
+            loadTimeZones()
+        }
+    }
+
 
 }

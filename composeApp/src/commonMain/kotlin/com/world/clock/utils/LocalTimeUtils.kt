@@ -14,16 +14,26 @@ import kotlin.time.ExperimentalTime
 
 
 @OptIn(ExperimentalTime::class)
-fun getLocalTimeFormatted(timezone: String): String {
+fun getLocalTimeFormatted(timezone: String, is24Hour: Boolean): String {
     val zone = TimeZone.of(timezone)
     val now = Clock.System.now().toLocalDateTime(zone)
 
-    val hour = if (now.hour % 12 == 0) 12 else now.hour % 12
-    val minute = now.minute.toString().padStart(2, '0')
-    val second = now.second.toString().padStart(2, '0')
-    val amPm = if (now.hour < 12) "AM" else "PM"
+    val hour = if (is24Hour) {
+        now.hour
+    } else {
+        if (now.hour % 12 == 0) 12 else now.hour % 12
+    }
 
-    return "$hour:$minute:$second $amPm"
+    val hourStr = hour.toString().padStart(2, '0')
+    val minuteStr = now.minute.toString().padStart(2, '0')
+    val secondStr = now.second.toString().padStart(2, '0')
+
+    return if (is24Hour) {
+        "$hourStr:$minuteStr:$secondStr"
+    } else {
+        val amPm = if (now.hour < 12) "AM" else "PM"
+        "$hourStr:$minuteStr:$secondStr $amPm"
+    }
 }
 
 
@@ -42,9 +52,9 @@ fun getGmtOffsetString(timeZone: TimeZone): String {
     return "GMT$sign${absHours.toString().padStart(2, '0')}:${absMinutes.toString().padStart(2, '0')}"
 }
 
-fun tickingClock(timezone: String): Flow<String> = flow {
+fun tickingClock(timezone: String, is24Hour: Boolean): Flow<String> = flow {
     while (true) {
-        emit(getLocalTimeFormatted(timezone))
+        emit(getLocalTimeFormatted(timezone, is24Hour))
         delay(1000)
     }
 }

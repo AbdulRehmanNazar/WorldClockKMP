@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -19,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +34,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.world.clock.data.entity.FavouriteTimeZone
 import com.world.clock.data.getDatabaseBuilder
-import com.world.clock.screens.worldclock.TickingClockView
+import com.world.clock.datastore.TimeFormatDatastore
 import com.world.clock.utils.getGmtOffsetString
 import com.world.clock.utils.getLocalTimeFormatted
 import com.world.clock.utils.tickingClock
@@ -44,13 +44,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.offsetAt
 import network.chaintech.sdpcomposemultiplatform.sdp
 import network.chaintech.sdpcomposemultiplatform.ssp
 import org.jetbrains.compose.resources.painterResource
 import worldclockkmp.composeapp.generated.resources.Res
 import worldclockkmp.composeapp.generated.resources.ffavourite
-import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 
@@ -123,10 +121,16 @@ fun AllTimeZonesScreenContent(
         )
         LazyColumn {
             items(filteredTimeZones) { tz ->
-                AllTimeZoneItem(timezone = tz, onTimeZoneClick = { timeZone ->
-                    onTimeZoneClick(timeZone)
+                AllTimeZoneItem(
+                    timezone = FavouriteTimeZone(tz, tz),
+                    onTimeZoneClick = { timeZone ->
+                        onTimeZoneClick(timeZone)
 
-                })
+                    },
+                    onUpdateName = { id, newName ->
+
+
+                    })
             }
         }
     }
@@ -135,23 +139,28 @@ fun AllTimeZonesScreenContent(
 @OptIn(ExperimentalTime::class)
 @Composable
 fun AllTimeZoneItem(
-    timezone: String,
+    timezone: FavouriteTimeZone,
     isFavourite: Boolean = false,
+    onUpdateName: (String, String) -> Unit,
     onTimeZoneClick: (String) -> Unit
 ) {
-    var currentTime by remember { mutableStateOf(getLocalTimeFormatted(timezone)) }
 
-    val zone = remember(timezone) { TimeZone.of(timezone) }
+    val is24Hour by TimeFormatDatastore.is24HourFlow().collectAsState(false)
+
+    var currentTime by remember { mutableStateOf(getLocalTimeFormatted(timezone.id, is24Hour)) }
+
+    val zone = remember(timezone) { TimeZone.of(timezone.id) }
 
     val offsetString = remember(zone) { getGmtOffsetString(zone) }
 
     val displayName = remember(timezone) {
-        timezone.substringAfterLast('/').replace('_', ' ')
+        timezone.id.substringAfterLast('/').replace('_', ' ')
     }
 
+
     // Update ticking time every second
-    LaunchedEffect(timezone) {
-        tickingClock(timezone).collect { time ->
+    LaunchedEffect(timezone, is24Hour) {
+        tickingClock(timezone.id, is24Hour).collect { time ->
             currentTime = time
         }
     }
@@ -179,7 +188,7 @@ fun AllTimeZoneItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = timezone,
+                    text = timezone.id,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -189,7 +198,7 @@ fun AllTimeZoneItem(
                     "",
                     tint = if (!isFavourite) Color.White else Color.Red,
                     modifier = Modifier.size(18.sdp).clickable {
-                        onTimeZoneClick(timezone)
+                        onTimeZoneClick(timezone.id)
                     }
                 )
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,16 +29,16 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.world.clock.data.entity.FavouriteTimeZone
 import com.world.clock.data.getDatabaseBuilder
+import com.world.clock.datastore.TimeFormatDatastore
 import com.world.clock.screens.AllTimeZoneItem
 import com.world.clock.screens.AllTimeZonesScreen
 import com.world.clock.utils.tickingClock
+import kotlinx.coroutines.launch
 import network.chaintech.sdpcomposemultiplatform.sdp
 import network.chaintech.sdpcomposemultiplatform.ssp
 
 
 class FavouriteTimeZonesScreen() : Screen {
-
-
 
 
     @Composable
@@ -52,8 +54,8 @@ class FavouriteTimeZonesScreen() : Screen {
             onAddClick = {
                 navigator.push(AllTimeZonesScreen())
             },
-            onTimeZoneClick = {timeZone->
-               viewModel.deleteTimeZone(timeZone)
+            onTimeZoneClick = { timeZone ->
+                viewModel.deleteTimeZone(timeZone)
             },
         )
     }
@@ -62,7 +64,11 @@ class FavouriteTimeZonesScreen() : Screen {
 }
 
 @Composable
-fun FavouriteTimeZonesScreenContent(timezones: List<FavouriteTimeZone>, onAddClick: () -> Unit, onTimeZoneClick:(String) -> Unit) {
+fun FavouriteTimeZonesScreenContent(
+    timezones: List<FavouriteTimeZone>,
+    onAddClick: () -> Unit,
+    onTimeZoneClick: (String) -> Unit
+) {
 
     var searchQuery by remember { mutableStateOf("") }
 
@@ -101,12 +107,19 @@ fun FavouriteTimeZonesScreenContent(timezones: List<FavouriteTimeZone>, onAddCli
             placeholder = { Text("Search time zones...") },
             singleLine = true
         )
+        TimeFormatToggle()
         LazyColumn {
             items(filteredList) { tz ->
-                AllTimeZoneItem(timezone = tz.id, isFavourite = true, onTimeZoneClick = {timeZone->
+                AllTimeZoneItem(
+                    timezone = tz, isFavourite = true, onTimeZoneClick = { timeZone ->
 
-                    onTimeZoneClick(timeZone)
-                })
+                        onTimeZoneClick(timeZone)
+                    },
+                    onUpdateName = { id, newName ->
+
+
+                    }
+                )
             }
         }
     }
@@ -114,27 +127,25 @@ fun FavouriteTimeZonesScreenContent(timezones: List<FavouriteTimeZone>, onAddCli
 
 
 @Composable
-fun TickingClockView(timezone: String, onTimeZoneClick: (String) -> Unit) {
-    var currentTime by remember { mutableStateOf("") }
-
-
-    LaunchedEffect(timezone) {
-        tickingClock(timezone).collect { time ->
-            currentTime = time
-        }
-    }
+fun TimeFormatToggle() {
+    val scope = rememberCoroutineScope()
+    val is24Hour by TimeFormatDatastore.is24HourFlow()
+        .collectAsState(initial = false)
 
     Row(
-        modifier = Modifier.fillMaxWidth().clickable {
-            onTimeZoneClick(timezone)
-        },
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = timezone,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
+        Text("24-Hour Format", style = MaterialTheme.typography.bodyMedium, fontSize = 14.ssp)
+        Switch(
+            checked = is24Hour,
+            onCheckedChange = {
+                scope.launch {
+                    TimeFormatDatastore.set24Hour(it)
+                }
+            }
         )
-        Text(text = currentTime, style = MaterialTheme.typography.bodyLarge)
     }
 }
