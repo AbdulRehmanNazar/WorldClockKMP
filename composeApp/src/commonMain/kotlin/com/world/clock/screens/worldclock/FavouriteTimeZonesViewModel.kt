@@ -18,9 +18,9 @@ class FavouriteTimeZonesViewModel(private val dao: FavouriteTimeZoneDao) : ViewM
     }
 
 
-    fun deleteTimeZone(timeZone: String) {
+    fun deleteTimeZone(timeZoneDbId: Long, timeZoneId: String, timeZoneName: String) {
         viewModelScope.launch {
-            dao.delete(FavouriteTimeZone(timeZone))
+            dao.delete(FavouriteTimeZone(dbId = timeZoneDbId, id = timeZoneId, name = timeZoneName))
             loadTimeZones()
         }
     }
@@ -39,7 +39,7 @@ class FavouriteTimeZonesViewModel(private val dao: FavouriteTimeZoneDao) : ViewM
         }
     }
 
-    fun updateTimeZone(id:String, newName: String){
+    fun updateTimeZone(id:Long, newName: String){
         viewModelScope.launch {
             dao.updateName(id, newName)
             loadTimeZones()

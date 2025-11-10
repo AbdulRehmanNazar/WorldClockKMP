@@ -19,7 +19,7 @@ interface FavouriteTimeZoneDao{
 
     @Delete
     suspend fun delete(zone: FavouriteTimeZone)
-    @Query("UPDATE favourite_zones SET name = :newName WHERE id = :id")
-    suspend fun updateName(id: String, newName: String)
+    @Query("UPDATE favourite_zones SET name = :newName WHERE dbId = :id")
+    suspend fun updateName(id: Long, newName: String)
 
 }

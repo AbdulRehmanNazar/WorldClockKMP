@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "favourite_zones")
 data class FavouriteTimeZone(
-    @PrimaryKey val id: String,
+    @PrimaryKey(autoGenerate = true) val dbId: Long = 0,
+    val id: String,
     val name: String = id
 )
