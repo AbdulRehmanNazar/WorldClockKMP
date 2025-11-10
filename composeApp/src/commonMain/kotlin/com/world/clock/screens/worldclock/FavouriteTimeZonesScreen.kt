@@ -14,7 +14,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,15 +26,15 @@ import androidx.compose.ui.graphics.Color
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.world.clock.data.database.WorldClockDatabase
 import com.world.clock.data.entity.FavouriteTimeZone
-import com.world.clock.data.getDatabaseBuilder
 import com.world.clock.datastore.TimeFormatDatastore
 import com.world.clock.screens.AllTimeZoneItem
 import com.world.clock.screens.AllTimeZonesScreen
-import com.world.clock.utils.tickingClock
 import kotlinx.coroutines.launch
 import network.chaintech.sdpcomposemultiplatform.sdp
 import network.chaintech.sdpcomposemultiplatform.ssp
+import org.koin.compose.koinInject
 
 
 class FavouriteTimeZonesScreen() : Screen {
@@ -44,7 +43,7 @@ class FavouriteTimeZonesScreen() : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val db = remember { getDatabaseBuilder() }
+        val db : WorldClockDatabase = koinInject()
         val dao = remember { db.favouriteTimeZoneDao() }
         val viewModel = remember { FavouriteTimeZonesViewModel(dao) }
         val favouriteTimeZones by viewModel.timeZone.collectAsState()

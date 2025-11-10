@@ -1,5 +1,6 @@
 package com.world.clock.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,8 +35,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.internal.BackHandler
+import com.world.clock.data.database.WorldClockDatabase
 import com.world.clock.data.entity.FavouriteTimeZone
-import com.world.clock.data.getDatabaseBuilder
 import com.world.clock.datastore.TimeFormatDatastore
 import com.world.clock.utils.getGmtOffsetString
 import com.world.clock.utils.getLocalTimeFormatted
@@ -47,6 +50,7 @@ import kotlinx.datetime.TimeZone
 import network.chaintech.sdpcomposemultiplatform.sdp
 import network.chaintech.sdpcomposemultiplatform.ssp
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import worldclockkmp.composeapp.generated.resources.Res
 import worldclockkmp.composeapp.generated.resources.ffavourite
 import kotlin.time.ExperimentalTime
@@ -59,7 +63,7 @@ class AllTimeZonesScreen() : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val db = remember { getDatabaseBuilder() }
+        val db: WorldClockDatabase = koinInject()
         val dao = remember { db.favouriteTimeZoneDao() }
 
         BackHandler(enabled = true) {
@@ -156,6 +160,7 @@ fun AllTimeZoneItem(
     val displayName = remember(timezone) {
         timezone.id.substringAfterLast('/').replace('_', ' ')
     }
+    var timeZoneName by remember { mutableStateOf(timezone.name) }
 
 
     // Update ticking time every second
@@ -187,8 +192,27 @@ fun AllTimeZoneItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+//                TextField(value = timeZoneName,
+//                    onValueChange = { timeZoneName = it },
+//                    textStyle = MaterialTheme.typography.titleMedium.copy(
+//                        fontWeight = FontWeight.SemiBold,
+//                        color = MaterialTheme.colorScheme.onSurface
+//                    ),
+//                    colors = TextFieldDefaults.colors(
+//                       // containerColor = Color.Transparent,
+//                        focusedIndicatorColor = Color.Transparent,
+//                        unfocusedIndicatorColor = Color.Transparent,
+//                        disabledIndicatorColor = Color.Transparent,
+//                        cursorColor = MaterialTheme.colorScheme.onSurface
+//                    ),
+//                    singleLine = true,
+//                    modifier = Modifier
+//                        .background(Color.Transparent)
+//                        .padding(0.sdp)
+//
+//                )
                 Text(
-                    text = timezone.id,
+                    text = timeZoneName,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )

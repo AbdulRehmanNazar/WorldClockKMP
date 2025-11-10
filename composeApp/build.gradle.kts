@@ -26,6 +26,9 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+
+            linkerOpts.add("-lsqlite3")
+
         }
     }
 
@@ -35,6 +38,10 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+
+            //Koin
+            implementation(libs.koin.android)
+            implementation(libs.koin.androidx.compose)
         }
         commonMain.dependencies {
 
@@ -58,6 +65,13 @@ kotlin {
             //room
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+
+            //Koin
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
+
+
             // DataStore library
             implementation("androidx.datastore:datastore:1.1.7")
             // The Preferences DataStore library
@@ -126,6 +140,8 @@ dependencies {
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
+
     // Add any other platform target you use in your project, for example kspDesktop
 }
 

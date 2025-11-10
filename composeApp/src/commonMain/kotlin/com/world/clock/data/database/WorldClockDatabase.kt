@@ -16,6 +16,10 @@ import com.world.clock.data.entity.FavouriteTimeZone
 
 abstract class WorldClockDatabase: RoomDatabase() {
     abstract fun favouriteTimeZoneDao(): FavouriteTimeZoneDao
+
+    companion object {
+        const val DB_NAME = "world_clock.db"
+    }
 }
 // Add this constructor class
 @Suppress("NO_ACTUAL_FOR_EXPECT")
