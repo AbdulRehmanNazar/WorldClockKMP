@@ -16,20 +16,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSizeDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -50,6 +57,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -58,7 +67,9 @@ import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.world.clock.data.database.WorldClockDatabase
 import com.world.clock.data.entity.FavouriteTimeZone
 import com.world.clock.datastore.TimeFormatDatastore
+import com.world.clock.screens.settings.SettingsScreen
 import com.world.clock.utils.getGmtOffsetString
+import com.world.clock.utils.getLocalDateFormatted
 import com.world.clock.utils.getLocalTimeFormatted
 import com.world.clock.utils.tickingClock
 import com.world.clock.utils.timeZones
@@ -67,12 +78,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.offsetAt
 import network.chaintech.sdpcomposemultiplatform.sdp
 import network.chaintech.sdpcomposemultiplatform.ssp
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 import worldclockkmp.composeapp.generated.resources.Res
 import worldclockkmp.composeapp.generated.resources.*
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 
@@ -85,6 +98,8 @@ class AllTimeZonesScreen() : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val db: WorldClockDatabase = koinInject()
         val dao = remember { db.favouriteTimeZoneDao() }
+        var menuDialog = remember { mutableStateOf(false) }
+
 
         BackHandler(enabled = true) {
             navigator.pop()
@@ -93,6 +108,9 @@ class AllTimeZonesScreen() : Screen {
 
         AllTimeZonesScreenContent(
             timeZones,
+            onMenuClick = {
+                menuDialog.value = !menuDialog.value
+            },
             onTimeZoneClick = { timeZoneId, timeZoneName ->
                 CoroutineScope(Dispatchers.IO).launch {
                     dao.insert(FavouriteTimeZone(id = timeZoneId, name = timeZoneName))
@@ -100,26 +118,89 @@ class AllTimeZonesScreen() : Screen {
                 navigator.pop()
             },
         )
+
+        if (menuDialog.value) {
+            Popup(
+                offset = IntOffset(-40, 40),
+                alignment = Alignment.TopEnd,
+                onDismissRequest = { menuDialog.value = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(12.sdp)
+                        )
+                        .padding(horizontal = 12.sdp, vertical = 6.sdp)
+                        .width(100.sdp),
+                    verticalArrangement = Arrangement.spacedBy(8.sdp)
+                ) {
+                    Row(
+                        modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            menuDialog.value = false
+                            navigator.push(SettingsScreen())
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.sdp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_gear),
+                            contentDescription = null,
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "Settings",
+                            color = Color.White,
+                            fontSize = 14.ssp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.sdp)
+                        )
+                    }
+
+                }
+            }
+        }
     }
 
 
 }
 
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalTime::class)
 @Composable
 fun AllTimeZonesScreenContent(
     timezones: List<FavouriteTimeZone>,
+    onMenuClick: () -> Unit,
     onTimeZoneClick: (id: String, name: String) -> Unit
 ) {
 
     val focusManager = LocalFocusManager.current
 
     var searchQuery by remember { mutableStateOf("") }
+    var sortType by remember { mutableStateOf(SortType.REGION) }
+    var showSortDialog by remember { mutableStateOf(false) }
+
+
 
     val filteredTimeZones = remember(searchQuery, timezones) {
         if (searchQuery.isBlank()) timezones
         else timezones.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
+    val sortedTimeZones = remember(filteredTimeZones, sortType) {
+        when (sortType) {
+            SortType.REGION -> filteredTimeZones.sortedBy { it.name.substringAfter('/').lowercase() }
+            SortType.GMT_OFFSET -> filteredTimeZones.sortedBy {
+                val zone = TimeZone.of(it.id)
+                zone.offsetAt(Clock.System.now()).totalSeconds
+            }
+//            SortType.CITIES -> filteredTimeZones.sortedBy { it.name.substring() }
+            SortType.CITIES -> filteredTimeZones.sortedBy { it.name.substringBefore('/').lowercase() }
+        }
     }
 
 
@@ -133,13 +214,12 @@ fun AllTimeZonesScreenContent(
             ) {
                 focusManager.clearFocus()
             },
-        verticalArrangement = Arrangement.spacedBy(8.sdp)
     ) {
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.sdp),
+                .padding(vertical = 18.sdp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -149,62 +229,150 @@ fun AllTimeZonesScreenContent(
                 fontSize = 20.ssp,
                 fontWeight = FontWeight.ExtraBold
             )
+
+            Row(
+                modifier = Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.sdp),
+            ) {
+//                SortDropdown(sortType = sortType, onSortChange = { sortType = it })
+
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = CircleShape
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            showSortDialog = true
+                        }
+                        .padding(6.sdp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_sort),
+                        contentDescription = null,
+                        tint = Color.Black
+                    )
+                }
+
+//                Box(
+//                    modifier = Modifier
+//                        .background(
+//                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+//                            shape = CircleShape
+//                        )
+//                        .clickable(
+//                            indication = null,
+//                            interactionSource = MutableInteractionSource()
+//                        ) { onAddClick() }
+//                        .padding(4.sdp)
+//                ) {
+//                    Text(
+//                        text = "\u2795",
+//                        color = MaterialTheme.colorScheme.primary,
+//                        fontSize = 16.ssp,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//                }
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = CircleShape
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            onMenuClick()
+                        }
+                        .padding(4.sdp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_menu),
+                        tint = Color.Black,
+                        contentDescription = null
+                    )
+                }
+
+            }
         }
 
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(14.sdp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.sdp)
+        ) {
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(14.sdp)
+                    )
+                    .padding(2.sdp),
+                placeholder = {
+                    Text(
+                        "Search time zones...",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                },
+                shape = RoundedCornerShape(12.sdp),
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(
+                    fontSize = 14.ssp,
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
                 )
-                .padding(2.sdp),
-            placeholder = {
-                Text(
-                    "Search time zones...",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-            },
-            shape = RoundedCornerShape(12.sdp),
-            singleLine = true,
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 14.ssp,
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent
             )
-        )
 
 
-        LazyColumn {
-            items(filteredTimeZones) { tz ->
-                AllTimeZoneItem(
-                    timezone = FavouriteTimeZone(id = tz.id, name = tz.name),
-                    readOnly = true,
-                    onTimeZoneClick = { dbId, timeZoneId, timeZoneName ->
-                        onTimeZoneClick(timeZoneId, timeZoneName)
+            LazyColumn {
+                items(sortedTimeZones) { tz ->
+                    AllTimeZoneItem(
+                        timezone = FavouriteTimeZone(id = tz.id, name = tz.name),
+                        readOnly = true,
+                        onTimeZoneClick = { dbId, timeZoneId, timeZoneName ->
+                            onTimeZoneClick(timeZoneId, timeZoneName)
 
-                    },
-                    onUpdateName = { id, newName ->
+                        },
+                        onUpdateName = { id, newName ->
 
 
-                    })
+                        })
+                }
+                item {
+                    Spacer(Modifier.height(25.sdp))
+                }
             }
-            item {
-                Spacer(Modifier.height(25.sdp))
-            }
+        }
+
+        if (showSortDialog) {
+            SortDialog(
+                selectedSort = sortType,
+                onDismiss = { showSortDialog = false },
+                onSortSelected = {
+                    sortType = it
+                    showSortDialog = false
+                }
+            )
         }
     }
 }
@@ -220,8 +388,11 @@ fun AllTimeZoneItem(
 ) {
 
     val is24Hour by TimeFormatDatastore.is24HourFlow().collectAsState(false)
+    val isDate by TimeFormatDatastore.isDateFlow().collectAsState(false)
 
     var currentTime by remember { mutableStateOf(getLocalTimeFormatted(timezone.id, is24Hour)) }
+
+    val date = getLocalDateFormatted(timezone.id)
 
     val zone = remember(timezone) { TimeZone.of(timezone.id) }
 
@@ -362,8 +533,16 @@ fun AllTimeZoneItem(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                        Text(
+                            modifier = Modifier.padding(start = 12.sdp),
+                            text = if (isDate) date else "",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     Text(
                         text = currentTime,
                         style = MaterialTheme.typography.titleLarge.copy(
@@ -377,6 +556,65 @@ fun AllTimeZoneItem(
     }
 
 
+}
+
+@Composable
+fun SortDialog(
+    selectedSort: SortType,
+    onDismiss: () -> Unit,
+    onSortSelected: (SortType) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Sort By",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        },
+        text = {
+            Column(
+            ) {
+                SortType.entries.forEach { option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSortSelected(option) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = option == selectedSort,
+                            onClick = { onSortSelected(option) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Text(
+                            text = option.displayName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.sdp
+    )
+}
+
+
+enum class SortType(val displayName: String) {
+    REGION("Region"),
+    GMT_OFFSET("GMT Offset"),
+    CITIES("City")
 }
 
 

@@ -50,6 +50,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -58,7 +61,10 @@ import com.world.clock.data.entity.FavouriteTimeZone
 import com.world.clock.datastore.TimeFormatDatastore
 import com.world.clock.screens.AllTimeZoneItem
 import com.world.clock.screens.AllTimeZonesScreen
+import com.world.clock.screens.settings.SettingsScreen
+import com.world.clock.screens.timeScrubber.TimeScrubberScreen
 import com.world.clock.utils.getGmtOffsetString
+import com.world.clock.utils.getLocalDateFormatted
 import com.world.clock.utils.getLocalTimeFormatted
 import com.world.clock.utils.tickingClock
 import kotlinx.coroutines.launch
@@ -70,6 +76,9 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 import worldclockkmp.composeapp.generated.resources.Res
 import worldclockkmp.composeapp.generated.resources.ffavourite
+import worldclockkmp.composeapp.generated.resources.ic_clock
+import worldclockkmp.composeapp.generated.resources.ic_gear
+import worldclockkmp.composeapp.generated.resources.ic_menu
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -84,11 +93,15 @@ class FavouriteTimeZonesScreen() : Screen {
         val dao = remember { db.favouriteTimeZoneDao() }
         val viewModel = remember { FavouriteTimeZonesViewModel(dao) }
         val favouriteTimeZones by viewModel.timeZone.collectAsState()
+        var menuDialog = remember { mutableStateOf(false) }
 
         FavouriteTimeZonesScreenContent(
             favouriteTimeZones,
             onAddClick = {
                 navigator.push(AllTimeZonesScreen())
+            },
+            onMenuClick = {
+                menuDialog.value = !menuDialog.value
             },
             onTimeZoneClick = { dbId, timeZoneId, timeZoneName ->
                 viewModel.deleteTimeZone(dbId, timeZoneId, timeZoneName)
@@ -96,6 +109,78 @@ class FavouriteTimeZonesScreen() : Screen {
                 viewModel.updateTimeZone(id, newName)
             }
         )
+
+        if (menuDialog.value) {
+            Popup(
+                offset = IntOffset(-40, 40),
+                alignment = Alignment.TopEnd,
+                onDismissRequest = { menuDialog.value = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(12.sdp)
+                        )
+                        .padding(horizontal = 12.sdp, vertical = 6.sdp)
+                        .width(120.sdp),
+                    verticalArrangement = Arrangement.spacedBy(8.sdp)
+                ) {
+                    Row(
+                        modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            menuDialog.value = false
+                            navigator.push(SettingsScreen())
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.sdp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_gear),
+                            contentDescription = null,
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "Settings",
+                            color = Color.White,
+                            fontSize = 12.ssp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.sdp)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            menuDialog.value = false
+                            navigator.push(TimeScrubberScreen())
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.sdp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_clock),
+                            contentDescription = null,
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "Time Scrubber",
+                            color = Color.White,
+                            fontSize = 12.ssp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.sdp)
+                        )
+                    }
+
+                }
+            }
+        }
     }
 
 
@@ -105,6 +190,7 @@ class FavouriteTimeZonesScreen() : Screen {
 fun FavouriteTimeZonesScreenContent(
     timezones: List<FavouriteTimeZone>,
     onAddClick: () -> Unit,
+    onMenuClick: () -> Unit,
     onTimeZoneClick: (dbId: Long, id: String, name: String) -> Unit,
     onUpdateName: (id: Long, newName: String) -> Unit
 ) {
@@ -140,14 +226,13 @@ fun FavouriteTimeZonesScreenContent(
             ) {
                 focusManager.clearFocus()
             },
-        verticalArrangement = Arrangement.spacedBy(8.sdp)
     ) {
 
         // Header bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.sdp),
+                .padding(vertical = 18.sdp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -158,27 +243,58 @@ fun FavouriteTimeZonesScreenContent(
                 fontWeight = FontWeight.ExtraBold
             )
 
-            Box(
-                modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        shape = CircleShape
-                    )
-                    .clickable(
-                        indication = null,
-                        interactionSource = MutableInteractionSource()
-                    ) { onAddClick() }
-                    .padding(6.sdp)
+
+            Row(
+                modifier = Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.sdp),
             ) {
-                Text(
-                    text = "\u2795",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 16.ssp,
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = CircleShape
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) { onAddClick() }
+                        .padding(4.sdp)
+                ) {
+                    Text(
+                        text = "\u2795",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 16.ssp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = CircleShape
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            onMenuClick()
+                        }
+                        .padding(4.sdp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_menu),
+                        contentDescription = null
+                    )
+                }
+
             }
         }
-
+Column(
+    modifier = Modifier
+        .fillMaxSize(),
+    verticalArrangement = Arrangement.spacedBy(8.sdp)
+) {
         // Search bar with elevated colorful look
         OutlinedTextField(
             value = searchQuery,
@@ -217,7 +333,7 @@ fun FavouriteTimeZonesScreenContent(
         )
 
 
-        TimeFormatToggle()
+//        TimeFormatToggle()
         LazyColumn {
             items(filteredList) { tz ->
                 if (tz.dbId == -1L) {
@@ -237,7 +353,7 @@ fun FavouriteTimeZonesScreenContent(
             }
             item { Spacer(Modifier.height(25.sdp)) }
         }
-    }
+    }}
 }
 
 @OptIn(ExperimentalTime::class)
@@ -249,7 +365,8 @@ fun CurrentTimeZoneCard() {
     val zoneId = timeZone.id.substringAfterLast('/').replace('_', ' ')
     var currentTime by remember { mutableStateOf(getLocalTimeFormatted(timeZone.id, is24Hour)) }
     val zone = remember(timeZone) { TimeZone.of(timeZone.id) }
-
+    val date = getLocalDateFormatted(timeZone.id)
+    val isDate by TimeFormatDatastore.isDateFlow().collectAsState(false)
     val offsetString = remember(zone) { getGmtOffsetString(zone) }
     LaunchedEffect(timeZone, is24Hour) {
         tickingClock(timeZone.id, is24Hour).collect { time ->
@@ -374,8 +491,16 @@ fun CurrentTimeZoneCard() {
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Text(
+                        modifier = Modifier.padding(start = 12.sdp),
+                        text = if (isDate) date else "",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Text(
                         text = currentTime,
                         style = MaterialTheme.typography.titleLarge.copy(
