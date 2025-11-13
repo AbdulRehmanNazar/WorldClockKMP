@@ -190,7 +190,7 @@ fun TimeScrubber(
         }
 
         Text(
-            text = "UTC ${String.format("%02d:%02d", selectedHour, selectedMinute)}",
+            text = "UTC ${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}",
             modifier = Modifier.align(Alignment.CenterHorizontally),
             fontSize = 18.ssp,
             fontWeight = FontWeight.Bold,
