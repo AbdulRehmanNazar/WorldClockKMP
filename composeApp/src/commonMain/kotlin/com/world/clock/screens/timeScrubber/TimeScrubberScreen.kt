@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -129,6 +130,11 @@ fun TimeScrubberScreenContent(
         TimeScrubber(
             selectedHour = selectedHour,
             selectedMinute = selectedMinute,
+            onNow = {
+                val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+                selectedHour = now.hour
+                selectedMinute = now.minute
+            },
             onValueChange = { h, m ->
                 selectedHour = h
                 selectedMinute = m
@@ -153,6 +159,7 @@ fun TimeScrubberScreenContent(
 fun TimeScrubber(
     selectedHour: Int,
     selectedMinute: Int,
+    onNow: () -> Unit,
     onValueChange: (hour: Int, minute: Int) -> Unit
 ) {
     val totalMinutes = selectedHour * 60 + selectedMinute
@@ -165,28 +172,48 @@ fun TimeScrubber(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.sdp),
         ) {
-            Text("−", color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 16.ssp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.sdp),
+            ) {
+                Text("−", color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 16.ssp)
 
-            Slider(
-                value = progress,
-                onValueChange = { p ->
-                    val totalMins = (p * 1440).toInt().coerceAtMost(1439)
-                    val hour = totalMins / 60
-                    val minute = totalMins % 60
-                    onValueChange(hour, minute)
+                Slider(
+                    value = progress,
+                    onValueChange = { p ->
+                        val totalMins = (p * 1440).toInt().coerceAtMost(1439)
+                        val hour = totalMins / 60
+                        val minute = totalMins % 60
+                        onValueChange(hour, minute)
+                    },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary.copy(0.6f),
+                        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(0.2f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text("+", color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 16.ssp)
+            }
+
+            Row(
+            modifier = Modifier
+                .padding(vertical = 8.sdp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = {
+                    onNow()
                 },
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary.copy(0.6f),
-                    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(0.2f)
-                ),
-                modifier = Modifier.weight(1f)
-            )
-
-            Text("+", color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 16.ssp)
+                shape = RoundedCornerShape(12.sdp)
+            ) {
+                Text(text = "Now")
+            }
+        }
         }
 
         Text(

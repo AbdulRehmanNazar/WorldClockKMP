@@ -254,6 +254,7 @@ fun AllTimeZonesScreenContent(
                     Icon(
                         painter = painterResource(Res.drawable.ic_sort),
                         contentDescription = null,
+                        modifier = Modifier.size(20.sdp),
                         tint = Color.Black
                     )
                 }
@@ -294,6 +295,7 @@ fun AllTimeZonesScreenContent(
                     Icon(
                         painter = painterResource(Res.drawable.ic_menu),
                         tint = Color.Black,
+                        modifier = Modifier.size(20.sdp),
                         contentDescription = null
                     )
                 }

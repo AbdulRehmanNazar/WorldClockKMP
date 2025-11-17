@@ -76,6 +76,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 import worldclockkmp.composeapp.generated.resources.Res
 import worldclockkmp.composeapp.generated.resources.ffavourite
+import worldclockkmp.composeapp.generated.resources.ic_add
 import worldclockkmp.composeapp.generated.resources.ic_clock
 import worldclockkmp.composeapp.generated.resources.ic_gear
 import worldclockkmp.composeapp.generated.resources.ic_menu
@@ -258,14 +259,16 @@ fun FavouriteTimeZonesScreenContent(
                         .clickable(
                             indication = null,
                             interactionSource = MutableInteractionSource()
-                        ) { onAddClick() }
+                        ) {
+                            onAddClick()
+                        }
                         .padding(4.sdp)
                 ) {
-                    Text(
-                        text = "\u2795",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 16.ssp,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_add),
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(20.sdp)
                     )
                 }
                 Box(
@@ -284,7 +287,9 @@ fun FavouriteTimeZonesScreenContent(
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_menu),
-                        contentDescription = null
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(20.sdp)
                     )
                 }
 
